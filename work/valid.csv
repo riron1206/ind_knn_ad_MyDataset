@@ -1,0 +1,11 @@
+file_path,label
+./ind_knn_ad/datasets/transistor_reduced/test/good/000.png,0
+./ind_knn_ad/datasets/transistor_reduced/test/good/001.png,0
+./ind_knn_ad/datasets/transistor_reduced/test/misplaced/000.png,1
+./ind_knn_ad/datasets/transistor_reduced/test/misplaced/001.png,1
+./ind_knn_ad/datasets/transistor_reduced/test/damaged_case/000.png,1
+./ind_knn_ad/datasets/transistor_reduced/test/damaged_case/001.png,1
+./ind_knn_ad/datasets/transistor_reduced/test/cut_lead/000.png,1
+./ind_knn_ad/datasets/transistor_reduced/test/cut_lead/001.png,1
+./ind_knn_ad/datasets/transistor_reduced/test/bent_lead/000.png,1
+./ind_knn_ad/datasets/transistor_reduced/test/bent_lead/001.png,1
