@@ -50,7 +50,7 @@ docker run -p 8888:8888 \
 --rm \
 --gpus all \
 --shm-size 32g \
-saa_plus \
+ind_knn_ad \
 /bin/bash
 
 # Jupyter lab起動
