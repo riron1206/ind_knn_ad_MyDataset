@@ -33,7 +33,7 @@ git clone https://github.com/rvorias/ind_knn_ad.git
 
 [./work/run_mydataset.py](./work/run_mydataset.py) がサンプルコード。使用例は[./work/run_test.sh](./work/run_test.sh) を参照。
 
-- timmをbackboneに用いて`SPADE`, `PaDiM`, `PatchCore`の3つの異常検知手法が使える。
+- timmをbackboneに用いて [SPADE](./images/ind_knn_ad_methods.md), [PaDiM](./images/ind_knn_ad_methods.md), [PatchCore](./images/ind_knn_ad_methods.md) の3つの異常検知手法が使える。
 
 - 入力画像のファイルパスが記載されたCSVファイルを入力として使用。
 
