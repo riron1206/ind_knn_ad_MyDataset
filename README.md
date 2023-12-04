@@ -37,6 +37,8 @@ git clone https://github.com/rvorias/ind_knn_ad.git
 
 - 入力画像のファイルパスが記載されたCSVファイルを入力として使用。
 
+[./work/run_timm_cnns.sh](./work/run_timm_cnns.sh) は色んなbackboneで実行する例。
+
 ## Jupyter notebook
 
 以下のコマンドでJupyter labを起動可能。
@@ -57,4 +59,6 @@ ind_knn_ad \
 jupyter lab --ip=0.0.0.0 --allow-root --no-browser --NotebookApp.token='' --port=8888
 
 # ind_knn_adを試したnotebook: work/ind_knn_ad_MyDataset.ipynb が実行できる
+
+
 ```
