@@ -20,6 +20,9 @@ import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 
+import warnings
+warnings.filterwarnings('ignore')
+
 sys.path.append('./ind_knn_ad/indad')
 from models import SPADE, PaDiM, PatchCore
 
