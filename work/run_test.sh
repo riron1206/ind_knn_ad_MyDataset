@@ -1,4 +1,5 @@
 # sample_data
+# ※./train.csv, ./valid.csv は run_import.ipynb で作れる
 python run_mydataset.py \
 -tr ./train.csv \
 -va ./valid.csv \

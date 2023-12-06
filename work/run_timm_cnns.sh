@@ -1,5 +1,6 @@
 # ファイルから配列を読み込む。使用可能なtimmのbackbone_name
 # ※ViT系のモデルは使えない。timmのfeatures_onlyの引数が使えないため
+# ※./train.csv, ./valid.csv は run_import.ipynb で作れる
 readarray -t array < timm_cnns.txt
 for i in "${array[@]}"
 do

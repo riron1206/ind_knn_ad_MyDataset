@@ -21,7 +21,7 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 
 import warnings
-warnings.filterwarnings('ignore')
+warnings.filterwarnings("ignore")
 
 sys.path.append('./ind_knn_ad/indad')
 from models import SPADE, PaDiM, PatchCore
@@ -43,6 +43,19 @@ def get_score(labels: np.ndarray, predictions: np.ndarray):
         traceback.print_exc()
         return 0.0
 
+def init_logger(log_file: str):
+    """ロガー"""
+    from logging import getLogger, INFO, FileHandler,  Formatter,  StreamHandler
+    logger = getLogger(__name__)
+    logger.setLevel(INFO)
+    handler1 = StreamHandler()
+    handler1.setFormatter(Formatter("%(message)s"))
+    handler2 = FileHandler(filename=log_file)
+    handler2.setFormatter(Formatter("%(message)s"))
+    logger.addHandler(handler1)
+    logger.addHandler(handler2)
+    return logger
+
 def seed_everything(seed: int):
     """乱数シード初期化"""
     random.seed(seed)
@@ -52,6 +65,10 @@ def seed_everything(seed: int):
     torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.benchmark = False
+
+def find_folders_with_name(directory: str, name: str = "fold"):
+    """指定されたディレクトリ内で 'fold' を含むディレクトリを検索"""
+    return [dir for dir in os.listdir(directory) if name in dir and os.path.isdir(os.path.join(directory, dir))]
 
 
 ##############
@@ -147,6 +164,7 @@ def inference_loader(model: nn.Module, test_loader: DataLoader, device: str = de
 # Main
 ##############
 def run_train_valid(args):
+    """hold-out"""
     # data
     train = pd.read_csv(args.train_csv)
     valid = pd.read_csv(args.valid_csv)
@@ -163,13 +181,50 @@ def run_train_valid(args):
     valid["pred"] = image_preds
     # score
     score = get_score(valid["label"].values, valid["pred"].values)
-    print("valid auc:", score)
+    LOGGER.info(f"valid auc: {score}")
     # output. 入力csvのファイル名に"_predict""を付けたcsvを出力
     output_csv = args.output_dir + f'/{Path(args.valid_csv).stem}_predict.csv'
     valid.to_csv(output_csv, index=False)
     print(f"=> OUTPUT: {output_csv}")
 
+def run_cv(args):
+    """cross-validation"""
+    folds = pd.read_csv(args.train_csv)
+    oof_df = pd.DataFrame()
+    for fold in sorted( folds["fold"].unique() ):
+        output_dir = args.output_dir + f"/fold{fold}"
+        os.makedirs(output_dir, exist_ok=True)
+        # data
+        trn_idx = folds[folds["fold"] != fold].index
+        val_idx = folds[folds["fold"] == fold].index
+        train = folds.loc[trn_idx].reset_index(drop=True)
+        valid = folds.loc[val_idx].reset_index(drop=True)
+        train = train[train["label"] == 0].reset_index(drop=True)  # trainは正常データのみにする
+        # model
+        model = eval(args.model_cls).to(device)
+        # train
+        train_loader = DataLoader(MyDataset(train, transforms=get_transforms()))  # bs=1のDataLoader
+        model.fit(train_loader)
+        save_model(model, args.model_cls, output_dir)
+        # inference
+        valid_loader = DataLoader(MyDataset(valid, transforms=get_transforms()))  # bs=1のDataLoader. SPADEではbs増やすとエラーになった
+        model = load_model(eval(args.model_cls), args.model_cls, output_dir)
+        image_preds, _ = inference_loader(model, valid_loader)
+        valid["pred"] = image_preds
+        # fold score
+        score = get_score(valid["label"].values, valid["pred"].values)
+        LOGGER.info(f"fold{fold} auc: {score}")
+        oof_df = pd.concat([oof_df, valid])
+    # oof score
+    score = get_score(oof_df["label"].values, oof_df["pred"].values)
+    LOGGER.info(f"oof auc: {score}")
+    # output. 入力csvのファイル名に"_predict""を付けたcsvを出力
+    output_csv = args.output_dir + f'/{Path(args.train_csv).stem}_predict.csv'
+    oof_df.to_csv(output_csv, index=False)
+    print(f"=> OUTPUT: {output_csv}")
+
 def run_test(args):
+    """推論のみ"""
     # data
     test = pd.read_csv(args.test_csv)
     # inference
@@ -182,45 +237,60 @@ def run_test(args):
     test.to_csv(output_csv, index=False)
     print(f"=> OUTPUT: {output_csv}")
 
+def run_test_folds(args):
+    """全foldの推論平均"""
+    # data
+    test = pd.read_csv(args.test_csv)
+    image_preds_sum = None
+    fold_dirs = sorted( find_folders_with_name(args.output_dir, name="fold") )
+    for fold_dir in fold_dirs:
+        fold_dir = args.output_dir + f"/{fold_dir}"
+        # inference
+        test_loader = DataLoader(MyDataset(test, transforms=get_transforms()))  # bs=1のDataLoader. SPADEではbs増やすとエラーになった
+        model = load_model(eval(args.model_cls), args.model_cls, fold_dir)
+        image_preds, _ = inference_loader(model, test_loader)
+        if image_preds_sum is None:
+            image_preds_sum = image_preds
+        else:
+            image_preds_sum += image_preds
+    test["pred"] = image_preds_sum / len(fold_dirs)
+    # output. 入力csvのファイル名に"_predict""を付けたcsvを出力
+    output_csv = args.output_dir + f'/{Path(args.test_csv).stem}_predict_folds.csv'
+    test.to_csv(output_csv, index=False)
+    print(f"=> OUTPUT: {output_csv}")
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-tr', '--train_csv', type=str, default='',
-                        help="trainに使う正常画像のパス(file_path列)が書かれたcsv")
+                        help="trainに使う正常画像のパス(file_path列)が書かれたcsv。trainのみ指定する場合はcross-validationを行う。fold列とlabel列が必要")
     parser.add_argument('-va', '--valid_csv', type=str, default='',
-                        help="valid_setの画像パス(file_path列)とラベル(label列)が書かれたcsv。ラベルは0が正常、1が異常")
+                        help="valid_setの画像パス(file_path列)とラベル(label列)が書かれたcsv。ラベルは0が正常、1が異常。valid指定する場合はhold-outを行う")
     parser.add_argument('-te', '--test_csv', type=str, default='',
                         help="推論したい画像のパス(file_path)が書かれたcsv")
     parser.add_argument('-o', '--output_dir', type=str, default='output',
                         help="出力ディレクトリのパス")
     parser.add_argument('-m', '--model_cls', type=str, default="PatchCore(f_coreset=.10, backbone_name='wide_resnet50_2')",
                         help="ind_knn_adのmodelクラス")
+    parser.add_argument('-s', '--seed', type=int, default=0,
+                        help="乱数シード")
+    parser.add_argument('--is_test_folds', action='store_true',
+                        help="Test folds flag。全foldの推論平均するか")
     args = parser.parse_args()
     os.makedirs(args.output_dir, exist_ok=True)
-    seed_everything(0)
-    if (args.train_csv != "") and (args.valid_csv != ""):
+    seed_everything(args.seed)
+    # train
+    if (args.train_csv != "") and (args.valid_csv == ""):
+        LOGGER = init_logger(args.output_dir + '/train.log')
+        LOGGER.info(f"=> {args.model_cls}")
+        run_cv(args)
+    elif (args.train_csv != "") and (args.valid_csv != ""):
+        LOGGER = init_logger(args.output_dir + '/train.log')
+        LOGGER.info(f"=> {args.model_cls}")
         run_train_valid(args)
-    if args.test_csv != "":
+    # test
+    if (args.test_csv != "") and args.is_test_folds:
+        run_test_folds(args)
+    elif args.test_csv != "":
         run_test(args)
-    
-
-    
-### for sample_data
-def _make_sample_csv(output_dir="."):
-    """ind_knn_adのサンプル画像から入力用csv作成"""
-    good_paths = sorted(glob.glob(f"./ind_knn_ad/datasets/transistor_reduced/train/good/*"))
-    print("len(train):", len(good_paths))
-    train = pd.DataFrame({"file_path": good_paths, "label": 0})
-    train.to_csv(f"{output_dir}/train.csv", index=False)
-    
-    good_paths = sorted(glob.glob(f"./ind_knn_ad/datasets/transistor_reduced/test/good/*"))
-    defect_paths = []
-    for d in ["misplaced", "damaged_case", "cut_lead", "bent_lead"]:
-        defect_paths += sorted(glob.glob(f"./ind_knn_ad/datasets/transistor_reduced/test/{d}/*"))
-    print("len(valid_good):", len(good_paths))
-    print("len(valid_defect):", len(defect_paths))
-    valid_good = pd.DataFrame({"file_path": good_paths, "label": 0})
-    valid_defect = pd.DataFrame({"file_path": defect_paths, "label": 1})
-    valid = pd.concat([valid_good, valid_defect], ignore_index=True)
-    valid.to_csv(f"{output_dir}/valid.csv", index=False)
 
