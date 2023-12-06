@@ -15,7 +15,7 @@ KNN(k-nearest neighbors)ベースの画像異常検知のgithubである[ind_knn
 docker build -t ind_knn_ad -f ./Dockerfile .
 
 # Dockerコンテナ起動してbashで入る
-docker run -p 8888:8888 \
+docker run -p 8888:8888 -p 7860:7860 \
 -it \
 -w /work \
 -v $PWD/work:/work \
@@ -39,6 +39,8 @@ git clone https://github.com/rvorias/ind_knn_ad.git
 
 [./work/run_timm_cnns.sh](./work/run_timm_cnns.sh) は色んなbackboneで実行する例。
 
+[./work/gradio_app.py](./work/gradio_app.py) は推論して異常部可視化するgradioのアプリ。
+
 ## Jupyter notebook
 
 以下のコマンドでJupyter labを起動可能。
@@ -59,6 +61,4 @@ ind_knn_ad \
 jupyter lab --ip=0.0.0.0 --allow-root --no-browser --NotebookApp.token='' --port=8888
 
 # ind_knn_adを試したnotebook: work/run_import.ipynb, work/run_py_folds.ipynb が実行できる
-
-
 ```
