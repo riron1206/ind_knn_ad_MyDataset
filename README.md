@@ -58,7 +58,7 @@ ind_knn_ad \
 # Jupyter lab起動
 jupyter lab --ip=0.0.0.0 --allow-root --no-browser --NotebookApp.token='' --port=8888
 
-# ind_knn_adを試したnotebook: work/ind_knn_ad_MyDataset.ipynb が実行できる
+# ind_knn_adを試したnotebook: work/run_import.ipynb, work/run_py_folds.ipynb が実行できる
 
 
 ```
