@@ -41,7 +41,12 @@ git clone https://github.com/rvorias/ind_knn_ad.git
 
 [./work/gradio_app.py](./work/gradio_app.py) は推論して異常部可視化するgradioのアプリ。
 
-**run_mydataset.py, gradio_app.py とgit cloneした ind_knn_ad を別ディレクトリにコピーして変更すれば任意のデータで使える。**
+**run_mydataset.py とgit cloneした ind_knn_ad を別ディレクトリにコピーして変更すれば任意のデータで学習推論できる。**
+```bash
+cp ./work/run_mydataset.py ./xxx
+cp -r ./work/ind_knn_ad ./xxx
+cp ./work/run_py_folds.ipynb ./xxx
+```
 
 ## Jupyter notebook
 
